@@ -1,7 +1,7 @@
 FROM ubuntu:latest
 
 RUN apt update && apt install lsb-release net-tools vim openssh-server sudo -y
-RUN apt install build-essential libpam0g-dev libcurl4-openssl-dev  libqrencode-dev -y
+RUN apt install build-essential libpam0g-dev libcurl4-openssl-dev  libqrencode-dev libssl-dev -y
 
 RUN useradd -rm -d /home/ubuntu -s /bin/bash -g root -G sudo -u 1000 test 
 

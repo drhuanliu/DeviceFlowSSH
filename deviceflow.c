@@ -12,6 +12,9 @@
 #include <security/pam_modules.h>
 #include <security/pam_ext.h>
 
+/* needed for base64 decoder */
+#include <openssl/pem.h>
+
 char orgUrl[] = "https://huanliu.trexcloud.com";
 
 /* structure used for curl return */
@@ -19,6 +22,22 @@ struct MemoryStruct {
   char *memory;
   size_t size;
 };
+
+char *base64decode (const void *b64_decode_this, int decode_this_many_bytes){
+    BIO *b64_bio, *mem_bio;      //Declares two OpenSSL BIOs: a base64 filter and a memory BIO.
+    char *base64_decoded = calloc( (decode_this_many_bytes*3)/4+1, sizeof(char) ); //+1 = null.
+    b64_bio = BIO_new(BIO_f_base64());                      //Initialize our base64 filter BIO.
+    mem_bio = BIO_new(BIO_s_mem());                         //Initialize our memory source BIO.
+    BIO_write(mem_bio, b64_decode_this, decode_this_many_bytes); //Base64 data saved in source.
+    BIO_push(b64_bio, mem_bio);          //Link the BIOs by creating a filter-source BIO chain.
+    BIO_set_flags(b64_bio, BIO_FLAGS_BASE64_NO_NL);          //Don't require trailing newlines.
+    int decoded_byte_index = 0;   //Index where the next base64_decoded byte should be written.
+    while ( 0 < BIO_read(b64_bio, base64_decoded+decoded_byte_index, 1) ){ //Read byte-by-byte.
+        decoded_byte_index++; //Increment the index until read of BIO decoded data is complete.
+    } //Once we're done reading decoded data, BIO_read returns -1 even though there's no error.
+    BIO_free_all(b64_bio);  //Destroys all BIOs in chain, starting with b64 (i.e. the 1st one).
+    return base64_decoded;        //Returns base-64 decoded data with trailing null terminator.
+}
 
 /* function to write curl output */
 static size_t
@@ -152,6 +171,35 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 
                 getValueForKey(chunk.memory, "error", 8, 10, errormsg);
                 if (errormsg[0] == 0) {
+
+			/* Parse response to find id_token, then find payload, then find name claim */
+			char * token = strtok(chunk.memory, "\"");
+   			// loop through the string to look for id_token
+   			while( token != NULL ) {
+				if (!strcmp(token, "id_token")) {
+					token = strtok(NULL, "\"");
+					token = strtok(NULL, "\"");
+
+					char *header = strtok(token, ".");
+					char *payload = strtok(NULL, ".");
+
+					char *decoded = base64decode(payload, strlen(payload));
+
+					char * subtoken = strtok(decoded, "\"");
+					while ( subtoken != NULL ) {
+						if (!strcmp(subtoken, "name")) {
+							subtoken = strtok(NULL, "\"");
+							subtoken = strtok(NULL, "\"");
+
+							sprintf(prompt_message, "\n\n*********************************\n  Welcome, %s\n*********************************\n\n\n", subtoken);
+							sendPAMMessage(pamh, prompt_message);
+						}
+						subtoken = strtok(NULL, "\"");
+					}
+   				}
+				token = strtok(NULL, "\"");
+			}
+
                         if (curl) curl_easy_cleanup( curl ) ;
                         curl_global_cleanup();
 
