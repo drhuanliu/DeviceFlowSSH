@@ -4,6 +4,10 @@ Change SSH login to use Okta Device Flow to authenticate instead of using the no
 
 This is a pluggable PAM module. It is tested on Ubuntu 20.04.2 LTS, may need tweaking on other platforms. 
 
+This login experience looks like the following screenshot:
+
+![device flow SSH screenshot](./deviceflowSSHScreenshot.png)
+
 ## how to run
 
 First we need to bypass the normal password authentication. In `/etc/pam.d/sshd`, find a line with `@include common-auth`, comment it out. Then, add `auth       required     deviceflow.so`, where deviceflow.so is a module that we will compile shortly. The file should look like this:
@@ -41,5 +45,25 @@ sudo ld -x --shared -o /lib/security/deviceflow.so deviceflow.o qr.o -lm -lqrenc
 
 You need to restart sshd server for the change to take effect, e.g., `/etc/init.d/ssh restart` depending on your SSHD setup.
 
+## Experiment with Docker
 
+Instead of messing around on a Ubuntu server, you can also try out the flow in a Docker container. The Dockerfile is included. 
 
+Build the docker image:
+
+```
+ docker build -t ubuntuwithdeviceflowssh .  
+```
+Run the docker image:
+
+```
+docker run -d -it -v ~/workspace/deviceflow/:/home/ubuntu -v ~/workspace/deviceflowsecurity/:/lib/security -p 1022:22  ubuntuwithdeviceflowssh
+```
+
+where `~/workspace/deviceflow` contains the source files (this repo) locally, and `~/workspace/deviceflowsecurity/` is a directory to hold the compiled `deviceflow.so` file. 
+
+Then, you can login:
+
+```
+ssh test@localhost -p 1022
+```
