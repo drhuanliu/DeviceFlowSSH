@@ -29,7 +29,7 @@ UsePAM yes
 `deviceflow.so` is the PAM module that handles authentication with Okta's Device Flow capability. Check the tutorial to make sure you have enabled Device Flow grant type on your authentication server. To compile this module, you need a few packages, install these in Ubuntu:
 
 ```
-apt install build-essential libpam0g-dev libcurl4-openssl-dev  libqrencode-dev -y
+apt install build-essential libpam0g-dev libcurl4-openssl-dev libqrencode-dev libssl-dev -y
 ```
 
 There are two source files. 
@@ -40,7 +40,7 @@ To compile:
 
 ```
 gcc -fPIC -c deviceflow.c qr.c
-sudo ld -x --shared -o /lib/security/deviceflow.so deviceflow.o qr.o -lm -lqrencode -lcurl
+sudo ld -x --shared -o /lib/security/deviceflow.so deviceflow.o qr.o -lm -lqrencode -lcurl -lssl -lcrypto
 ```
 
 You need to restart sshd server for the change to take effect, e.g., `/etc/init.d/ssh restart` depending on your SSHD setup.
