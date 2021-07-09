@@ -15,8 +15,8 @@
 /* needed for base64 decoder */
 #include <openssl/pem.h>
 
-char authorizeUrl[] = "https://huanliu.trexcloud.com/oauth2/v1/device/authorize";
-char tokenUrl[] = "https://huanliu.trexcloud.com/oauth2/v1/token";
+#define authorizeUrl  "https://huanliu.trexcloud.com/oauth2/v1/device/authorize"
+#define tokenUrl "https://huanliu.trexcloud.com/oauth2/v1/token"
 
 /* structure used for curl return */
 struct MemoryStruct {
@@ -85,7 +85,7 @@ void issuePost(char * url, char * data) {
         /* we pass our 'chunk' struct to the callback function */
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
 
-        curl_easy_setopt( curl, CURLOPT_URL, url ) ;
+        curl_easy_setopt(curl, CURLOPT_URL, url ) ;
         curl_easy_setopt(curl, CURLOPT_POST, 1);  /* this is a POST */
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
         int res = curl_easy_perform( curl ) ;
