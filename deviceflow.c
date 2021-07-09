@@ -15,7 +15,8 @@
 /* needed for base64 decoder */
 #include <openssl/pem.h>
 
-char orgUrl[] = "https://huanliu.trexcloud.com";
+char authorizeUrl[] = "https://huanliu.trexcloud.com/oauth2/v1/device/authorize";
+char tokenUrl[] = "https://huanliu.trexcloud.com/oauth2/v1/token";
 
 /* structure used for curl return */
 struct MemoryStruct {
@@ -61,15 +62,18 @@ WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
   return realsize;
 }
 
-void getValueForKey(const char * in, const char * key, int start, int len, char * result) {
-        char * p = strstr(in, key);
-
-        if (p == NULL)
-                result[0] = 0;
-        else {
-                strncpy( result, p+start , len );
-                result[len] = 0;
-        }
+/* parse JSON output looking for value for a key. Assume string key value, so it parses on \" boundary */
+char * getValueForKey(char * in, const char * key) {
+	char * token = strtok(in, "\"");
+        while ( token != NULL ) {
+        	if (!strcmp(token, key)) {
+                	token = strtok(NULL, "\""); /* skip : */
+                        token = strtok(NULL, "\"");
+			return token;
+		}
+		token = strtok(NULL, "\"");
+	}
+	return NULL;
 }
 
 CURL *curl;
@@ -137,20 +141,24 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
         curl_global_init(CURL_GLOBAL_ALL);
         curl = curl_easy_init();
 
-        /* hold returned user_code */
-        char usercode[10], devicecode[35];
+        /* hold temp string */
+        char str1[4096], str2[1024], str3[1024];;
 
         /* call authorize end point */
-        issuePost("https://huanliu.trexcloud.com/oauth2/v1/device/authorize", "client_id=devNativeClientId&scope=openid profile offline_access");
+        issuePost(authorizeUrl, "client_id=devNativeClientId&scope=openid profile offline_access");
 
-        getValueForKey(chunk.memory, "user_code", 12, 8, usercode);
-        getValueForKey(chunk.memory, "device_code", 14, 36, devicecode);
+	strcpy(str1, chunk.memory);
+        char * usercode = getValueForKey(str1, "user_code");
+	strcpy(str2, chunk.memory);
+        char * devicecode = getValueForKey(str2, "device_code");
+	strcpy(str3, chunk.memory);
+	char * activateUrl = getValueForKey(str3, "verification_uri");
         printf("auth: %s %s\n", usercode, devicecode);
 
 
 	char prompt_message[2000];
-        char * qrc = getQR("https://huanliu.trexcloud.com/activate");
-  	sprintf( prompt_message, "\n\nPlease login at https://huanliu.trexcloud.com/activate or scan the QRCode below:\nThen input code %s\n\n%s", usercode, qrc );
+        char * qrc = getQR(activateUrl);
+  	sprintf( prompt_message, "\n\nPlease login at %s or scan the QRCode below:\nThen input code %s\n\n%s", activateUrl, usercode, qrc );
         free(qrc);
         sendPAMMessage(pamh, prompt_message);
 
@@ -162,43 +170,28 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
         char postData[1024];
         sprintf(postData, "device_code=%s&grant_type=urn:ietf:params:oauth:grant-type:device_code&client_id=devNativeClientId", devicecode);
 
-        char errormsg[256];
         while (waitingForActivate) {
                 // sendPAMMessage(pamh, "Waiting for user activation");
 
                 chunk.size = 0;
-                issuePost("https://huanliu.trexcloud.com/oauth2/v1/token", postData);
+                issuePost(tokenUrl, postData);
 
-                getValueForKey(chunk.memory, "error", 8, 10, errormsg);
-                if (errormsg[0] == 0) {
+		strcpy(str1, chunk.memory);
+                char * errormsg = getValueForKey(str1, "error");
+                if (errormsg == NULL) {
 
 			/* Parse response to find id_token, then find payload, then find name claim */
-			char * token = strtok(chunk.memory, "\"");
-   			// loop through the string to look for id_token
-   			while( token != NULL ) {
-				if (!strcmp(token, "id_token")) {
-					token = strtok(NULL, "\"");
-					token = strtok(NULL, "\"");
+			char * idtoken = getValueForKey(chunk.memory, "id_token");
 
-					char *header = strtok(token, ".");
-					char *payload = strtok(NULL, ".");
+			char * header = strtok(idtoken, ".");
+			char * payload = strtok(NULL, ".");
 
-					char *decoded = base64decode(payload, strlen(payload));
+			char * decoded = base64decode(payload, strlen(payload));
 
-					char * subtoken = strtok(decoded, "\"");
-					while ( subtoken != NULL ) {
-						if (!strcmp(subtoken, "name")) {
-							subtoken = strtok(NULL, "\"");
-							subtoken = strtok(NULL, "\"");
+			char * name = getValueForKey(decoded, "name");
 
-							sprintf(prompt_message, "\n\n*********************************\n  Welcome, %s\n*********************************\n\n\n", subtoken);
-							sendPAMMessage(pamh, prompt_message);
-						}
-						subtoken = strtok(NULL, "\"");
-					}
-   				}
-				token = strtok(NULL, "\"");
-			}
+			sprintf(prompt_message, "\n\n*********************************\n  Welcome, %s\n*********************************\n\n\n", name);
+			sendPAMMessage(pamh, prompt_message);
 
                         if (curl) curl_easy_cleanup( curl ) ;
                         curl_global_cleanup();
