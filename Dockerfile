@@ -1,7 +1,7 @@
-FROM ubuntu:latest
+FROM ubuntu:focal
 
-RUN apt update && apt install lsb-release net-tools vim openssh-server sudo -y
-RUN apt install build-essential libpam0g-dev libcurl4-openssl-dev  libqrencode-dev libssl-dev -y
+RUN apt-get update && apt install lsb-release net-tools vim openssh-server sudo -y
+RUN apt install git build-essential libpam0g-dev libcurl4-openssl-dev  libqrencode-dev libssl-dev -y
 
 RUN useradd -rm -d /home/ubuntu -s /bin/bash -g root -G sudo -u 1000 test 
 
@@ -16,3 +16,4 @@ RUN service ssh start
 EXPOSE 22
 
 CMD ["/usr/sbin/sshd","-D"]
+
