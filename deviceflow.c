@@ -15,8 +15,9 @@
 /* needed for base64 decoder */
 #include <openssl/pem.h>
 
-#define authorizeUrl  "https://huanliu.trexcloud.com/oauth2/v1/device/authorize"
-#define tokenUrl "https://huanliu.trexcloud.com/oauth2/v1/token"
+#define authorizeUrl  "https://dev-57525606.okta.com/oauth2/v1/device/authorize"
+#define tokenUrl "https://dev-57525606.okta.com/oauth2/v1/token"
+#define clientID "0oa15wulqt5yqD9FP5d7"
 
 /* structure used for curl return */
 struct MemoryStruct {
@@ -130,6 +131,7 @@ PAM_EXTERN int pam_sm_setcred( pam_handle_t *pamh, int flags, int argc, const ch
 /* expected hook, this is where custom stuff happens */
 PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, const char **argv ) {
         int res ;
+	char postData[1024];
 
         fprintf(stderr, "starting\n");
 
@@ -145,7 +147,8 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
         char str1[4096], str2[1024], str3[1024];;
 
         /* call authorize end point */
-        issuePost(authorizeUrl, "client_id=devNativeClientId&scope=openid profile offline_access");
+	sprintf(postData, "client_id=%s&scope=openid profile offline_access", clientID); 
+        issuePost(authorizeUrl, postData);
 
 	strcpy(str1, chunk.memory);
         char * usercode = getValueForKey(str1, "user_code");
@@ -155,10 +158,9 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 	char * activateUrl = getValueForKey(str3, "verification_uri");
         printf("auth: %s %s\n", usercode, devicecode);
 
-
 	char prompt_message[2000];
         char * qrc = getQR(activateUrl);
-  	sprintf( prompt_message, "\n\nPlease login at %s or scan the QRCode below:\nThen input code %s\n\n%s", activateUrl, usercode, qrc );
+  	sprintf(prompt_message, "\n\nPlease login at %s or scan the QRCode below:\nThen input code %s\n\n%s", activateUrl, usercode, qrc );
         free(qrc);
         sendPAMMessage(pamh, prompt_message);
 
@@ -167,8 +169,7 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
         res = pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &resp, "Press Enter to continue:");
 
         int waitingForActivate = 1;
-        char postData[1024];
-        sprintf(postData, "device_code=%s&grant_type=urn:ietf:params:oauth:grant-type:device_code&client_id=devNativeClientId", devicecode);
+        sprintf(postData, "device_code=%s&grant_type=urn:ietf:params:oauth:grant-type:device_code&client_id=%s", devicecode, clientID);
 
         while (waitingForActivate) {
                 // sendPAMMessage(pamh, "Waiting for user activation");
