@@ -1,3 +1,22 @@
+/**************
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+**********/
+
 /*******************************************************************************
  * author:      Huan Liu
  * description: PAM module to use device flow
@@ -15,9 +34,9 @@
 /* needed for base64 decoder */
 #include <openssl/pem.h>
 
-#define authorizeUrl  "https://dev-57525606.okta.com/oauth2/v1/device/authorize"
-#define tokenUrl "https://dev-57525606.okta.com/oauth2/v1/token"
-#define clientID "0oa15wulqt5yqD9FP5d7"
+#define DEVICE_AUTHORIZE_URL  "https://dev-57525606.okta.com/oauth2/v1/device/authorize"
+#define TOKEN_URL "https://dev-57525606.okta.com/oauth2/v1/token"
+#define CLIENT_ID "0oa15wulqt5yqD9FP5d7"
 
 /* structure used for curl return */
 struct MemoryStruct {
@@ -147,8 +166,8 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
         char str1[4096], str2[1024], str3[1024];;
 
         /* call authorize end point */
-	sprintf(postData, "client_id=%s&scope=openid profile offline_access", clientID); 
-        issuePost(authorizeUrl, postData);
+	sprintf(postData, "client_id=%s&scope=openid profile offline_access", CLIENT_ID); 
+        issuePost(DEVICE_AUTHORIZE_URL, postData);
 
 	strcpy(str1, chunk.memory);
         char * usercode = getValueForKey(str1, "user_code");
@@ -169,13 +188,13 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
         res = pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &resp, "Press Enter to continue:");
 
         int waitingForActivate = 1;
-        sprintf(postData, "device_code=%s&grant_type=urn:ietf:params:oauth:grant-type:device_code&client_id=%s", devicecode, clientID);
+        sprintf(postData, "device_code=%s&grant_type=urn:ietf:params:oauth:grant-type:device_code&client_id=%s", devicecode, CLIENT_ID);
 
         while (waitingForActivate) {
                 // sendPAMMessage(pamh, "Waiting for user activation");
 
                 chunk.size = 0;
-                issuePost(tokenUrl, postData);
+                issuePost(TOKEN_URL, postData);
 
 		strcpy(str1, chunk.memory);
                 char * errormsg = getValueForKey(str1, "error");
