@@ -174,12 +174,12 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 	strcpy(str2, chunk.memory);
         char * devicecode = getValueForKey(str2, "device_code");
 	strcpy(str3, chunk.memory);
-	char * activateUrl = getValueForKey(str3, "verification_uri");
+	char * activateUrl = getValueForKey(str3, "verification_uri_complete");
         printf("auth: %s %s\n", usercode, devicecode);
 
 	char prompt_message[2000];
         char * qrc = getQR(activateUrl);
-  	sprintf(prompt_message, "\n\nPlease login at %s or scan the QRCode below:\nThen input code %s\n\n%s", activateUrl, usercode, qrc );
+  	sprintf(prompt_message, "\n\nPlease login at %s or scan the QRCode below:\n\n%s", activateUrl, qrc );
         free(qrc);
         sendPAMMessage(pamh, prompt_message);
 
