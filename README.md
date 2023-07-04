@@ -2,7 +2,7 @@
 
 Change SSH login to use Okta Device Flow to authenticate instead of using the normal password. 
 
-This is a pluggable PAM module. It is tested on Ubuntu 20.04.2 LTS, may need tweaking on other platforms. 
+This is a pluggable PAM module. It is tested on Ubuntu 22.04.2 LTS, may need tweaking on other platforms. 
 
 This login experience looks like the following screenshot:
 
@@ -17,10 +17,10 @@ First we need to bypass the normal password authentication. In `/etc/pam.d/sshd`
 auth       required     deviceflow.so   # Plug in our authentication module
 ```
 
-Next, we need to make sure PAM modules are enabled. In `/etc/ssh/sshd_config`, we should change `ChallengeResponseAuthentication no` to `ChallengeResponseAuthentication yes`. Also, we need to make sure there is a line `UsePAM yes`. The file should look like this:
+Next, we need to make sure PAM modules are enabled. In `/etc/ssh/sshd_config`, we should change `KbdInteractiveAuthentication no` to `KbdInteractiveAuthentication yes`. Also, we need to make sure there is a line `UsePAM yes`. The file should look like this:
 
 ```
-ChallengeResponseAuthentication yes
+KbdInteractiveAuthentication yes
 UsePAM yes
 ```
 
@@ -45,7 +45,7 @@ sudo ld -x --shared -o /lib/security/deviceflow.so deviceflow.o qr.o -lm -lqrenc
 
 You need to restart sshd server for the change to take effect, e.g., `/etc/init.d/ssh restart` depending on your SSHD setup.
 
-## Experiment with Docker
+## Experiment with Docker (old, unmantained)
 
 Instead of messing around on a Ubuntu server, you can also try out the flow in a Docker container. The Dockerfile is included. 
 
