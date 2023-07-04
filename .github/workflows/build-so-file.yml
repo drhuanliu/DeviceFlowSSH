@@ -1,0 +1,20 @@
+name: Build SO file from code
+run-name: Build SO file from code
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v1
+      - name: Build SO file from source code
+        run: |
+          sudo apt install build-essential libpam0g-dev libcurl4-openssl-dev libqrencode-dev libssl-dev -y
+          gcc -fPIC -c deviceflow.c qr.c
+          sudo ld -x --shared -o deviceflow.so deviceflow.o qr.o -lm -lqrencode -lcurl -lssl -lcrypto
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: so-file
+          path: |
+            deviceflow.so
