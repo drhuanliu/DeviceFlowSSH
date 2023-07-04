@@ -161,6 +161,8 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
         const char * clientId = NULL;
         const char * tokenUrl = NULL;
         const char * deviceUrl = NULL;
+        const char * roleFieldName = NULL;
+        const char * requiredRole = NULL;
 
         print_log(pamh, LOG_INFO, "argument parsing started");
         for(int i = 0; i < argc; i++) {
@@ -178,6 +180,14 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
                 deviceUrl = argument+11;
                 print_log(pamh, LOG_INFO, "device url is: `%s`", deviceUrl);
             }
+            if (strstr(argument, "role_field_name=")) {
+                roleFieldName = argument+16;
+                print_log(pamh, LOG_INFO, "role field name is: `%s`", roleFieldName);
+            }
+            if (strstr(argument, "required_role=")) {
+                requiredRole = argument+14;
+                print_log(pamh, LOG_INFO, "required role is: `%s`", requiredRole);
+            }
         }
         print_log(pamh, LOG_INFO, "argument parsing ended");
 
@@ -191,6 +201,11 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
             if (deviceUrl == NULL) {
                 print_log(pamh, LOG_ERR, "device_url parameter is not provided!");
             }
+            return PAM_AUTH_ERR;
+        }
+
+        if ((requiredRole == NULL && roleFieldName != NULL) || (requiredRole != NULL && roleFieldName == NULL)) {
+            print_log(pamh, LOG_ERR, "role_field_name and required_role can only be used together");
             return PAM_AUTH_ERR;
         }
 
@@ -248,7 +263,21 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
 			        char * header = strtok(idtoken, ".");
 			        char * payload = strtok(NULL, ".");
                     char * decoded = base64decode(payload, strlen(payload));
-                    char * name = getValueForKey(decoded, "name");
+                    strcpy(str1, decoded);
+                    char * name = getValueForKey(str1, "name");
+                    if (roleFieldName != NULL) {
+                        strcpy(str1, decoded);
+                        char * roles = getValueForKey(str1, roleFieldName);
+                        if (strstr(roles, requiredRole)) {
+                            print_log(pamh, LOG_INFO, "User has the required role `%s`. The user's roles are: `%s`", requiredRole, roles);
+                        } else {
+                            print_log(pamh, LOG_INFO, "User does not have the required role `%s`. The user's roles are: `%s`", requiredRole, roles);
+                            sprintf(prompt_message, "You don't have the required role to login to this machine.");
+                            sendPAMMessage(pamh, prompt_message)
+                            return PAM_PERM_DENIED;
+                        }
+                    }
+
                     sprintf(prompt_message, "\n\n*********************************\n  Welcome, %s\n*********************************\n\n\n", name);
                     sendPAMMessage(pamh, prompt_message);
                     if (curl) {
