@@ -45,22 +45,21 @@ sudo ld -x --shared -o /lib/security/deviceflow.so deviceflow.o qr.o -lm -lqrenc
 
 You need to restart sshd server for the change to take effect, e.g., `/etc/init.d/ssh restart` depending on your SSHD setup.
 
-## Experiment with Docker (old, unmantained)
+## Experiment with Docker
 
-Instead of messing around on a Ubuntu server, you can also try out the flow in a Docker container. The Dockerfile is included. 
+Instead of messing around on an Ubuntu server, you can also try out the flow in a Docker container. The Dockerfile is included. 
 
 Build the docker image:
 
 ```
- docker build -t ubuntuwithdeviceflowssh .  
+docker build -t ubuntuwithdeviceflowssh . --build-arg DEVICE_URL=$DEVICE_URL --build-arg TOKEN_URL=$TOKEN_URL --build-arg CLIENT_ID=$CLIENT_ID
 ```
+
 Run the docker image:
 
 ```
-docker run -d -it -v ~/workspace/deviceflow/:/home/ubuntu -v ~/workspace/deviceflowsecurity/:/lib/security -p 1022:22  ubuntuwithdeviceflowssh
+docker run -it --rm -p 1022:22  ubuntuwithdeviceflowssh
 ```
-
-where `~/workspace/deviceflow` contains the source files (this repo) locally, and `~/workspace/deviceflowsecurity/` is a directory to hold the compiled `deviceflow.so` file. 
 
 Then, you can login:
 
